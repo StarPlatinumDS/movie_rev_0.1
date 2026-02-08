@@ -39,8 +39,8 @@ services:
       - "${MINIO_API_PORT:-9000}:9000"
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
-      - ./internal/storage:/data
-      - ./internal/storage/minio-config:/root/.minio
+      - ./internal/minio-storage:/data
+      - ./internal/minio-storage/minio-config:/root/.minio
     networks:
       - app_network
     healthcheck:
