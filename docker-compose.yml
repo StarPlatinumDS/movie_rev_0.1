@@ -14,7 +14,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - ./internal/database:/var/lib/postgresql/data
+      - ./internal/postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - app_network
@@ -40,7 +40,7 @@ services:
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - ./internal/storage:/data
-      - ./minio-config:/root/.minio
+      - ./internal/storage/minio-config:/root/.minio
     networks:
       - app_network
     healthcheck:
