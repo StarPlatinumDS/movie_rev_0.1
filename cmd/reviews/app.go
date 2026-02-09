@@ -75,6 +75,9 @@ func NewApp() *App {
 	// Роуты
 	mux.HandleFunc("/", movieHandlers.GetMoviesPage)
 	mux.HandleFunc("POST /movies", movieHandlers.CreateMovie)
+	mux.HandleFunc("GET /movie/{id}", movieHandlers.GetMovieDetail)
+	mux.HandleFunc("GET /movie/{id}/edit", movieHandlers.GetMovieEdit)
+	mux.HandleFunc("POST /movie/{id}/edit", movieHandlers.UpdateMovie)
 	mux.HandleFunc("GET /movies/delete", movieHandlers.DeleteMovie)
 
 	// === Server ===
