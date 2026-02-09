@@ -125,6 +125,30 @@ func (s *MovieService) GetMovieByID(ctx context.Context, id int) (*models.MovieR
 	}, nil
 }
 
+// SearchMovies returns searched movies with/without filtration
+func (s *MovieService) SearchMovies(ctx context.Context, query string, yearFrom, yearTo int, genres []string, hasComment *bool, offset, limit int) ([]models.MovieResponse, error) {
+	movies, err := s.repo.SearchMovies(ctx, query, yearFrom, yearTo, genres, hasComment, offset, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search movies: %s", err)
+	}
+
+	responses := make([]models.MovieResponse, len(movies))
+	for i, movie := range movies {
+		responses[i] = s.movieToResponse(movie)
+	}
+
+	return responses, nil
+}
+
+// Returns all genres for the search
+func (s *MovieService) GetAllGenres(ctx context.Context) ([]string, error) {
+	genres, err := s.repo.GetAllGenres(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get genres: %s", err)
+	}
+	return genres, nil
+}
+
 // UpdateMovie returns an update version of stored movie,
 // updates everything except createdAt
 func (s *MovieService) UpdateMovie(ctx context.Context, id int, name string, file io.Reader, fileName string,
@@ -200,4 +224,21 @@ func (s *MovieService) DeleteMovie(ctx context.Context, id int) error {
 
 	// delete from db
 	return s.repo.Delete(ctx, id)
+}
+
+// movieToResponse is a helper func to send movie to the client
+func (s *MovieService) movieToResponse(movie models.Movie) models.MovieResponse {
+	pictureURL := fmt.Sprintf("%s/%s", s.publicURL, movie.PictureKey)
+	return models.MovieResponse{
+		ID:          movie.ID,
+		Name:        movie.Name,
+		PictureURL:  pictureURL,
+		Genres:      movie.Genres,
+		Year:        movie.Year,
+		Description: movie.Description,
+		Rating:      movie.Rating,
+		WorldRating: movie.WorldRating,
+		Comment:     movie.Comment,
+		HasComment:  movie.Comment != "",
+	}
 }

@@ -80,6 +80,11 @@ func NewApp() *App {
 	mux.HandleFunc("POST /movie/{id}/edit", movieHandlers.UpdateMovie)
 	mux.HandleFunc("GET /movies/delete", movieHandlers.DeleteMovie)
 
+	// search routes
+	searchHandler := handlers.NewSearchHandler(movieService)
+	mux.HandleFunc("GET /search", searchHandler.SearchPage)
+	mux.HandleFunc("GET /api/search", searchHandler.SearchAPI)
+
 	// === Server ===
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {

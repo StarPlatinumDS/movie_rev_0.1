@@ -132,9 +132,9 @@ func (r *MovieRepository) SearchMovies(ctx context.Context, query string, yearFr
 	// hasComment filter
 	if hasComment != nil {
 		if *hasComment {
-			whereClauses = append(whereClauses, fmt.Sprintf("comment IS NOT NULL AND comment != ''"))
+			whereClauses = append(whereClauses, "comment IS NOT NULL AND comment != ''")
 		} else {
-			whereClauses = append(whereClauses, fmt.Sprintf("comment IS NULL OR comment = ''"))
+			whereClauses = append(whereClauses, "(comment IS NULL OR comment = '')")
 		}
 	}
 
@@ -181,6 +181,35 @@ func (r *MovieRepository) SearchMovies(ctx context.Context, query string, yearFr
 	}
 
 	return movies, nil
+}
+
+func (r *MovieRepository) GetAllGenres(ctx context.Context) ([]string, error) {
+	query := `
+		SELECT DISTINCT unnest(genres) AS genre
+		FROM movies
+		ORDER BY genre
+	`
+
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get genres: %s", err)
+	}
+	defer rows.Close()
+
+	var genres []string
+	for rows.Next() {
+		var genre string
+		if err := rows.Scan(&genre); err != nil {
+			return nil, fmt.Errorf("failed to scan genre: %s", err)
+		}
+		genres = append(genres, genre)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %s", err)
+	}
+
+	return genres, nil
 }
 
 func (r *MovieRepository) Update(ctx context.Context, movie *models.Movie) error {

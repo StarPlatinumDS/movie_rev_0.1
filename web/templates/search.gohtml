@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .card-img-top {
+            height: 200px;
+            object-fit: cover;
+        }
+        .movie-link {
+            text-decoration: none;
+            color: inherit;
+        }
+        .movie-link:hover {
+            text-decoration: none;
+            color: inherit;
+        }
+        .comment-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.2rem;
+            color: #ffc107;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .form-range {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">🎬 Movies</a>
+            <div class="d-flex">
+                <a href="/search" class="btn btn-outline-light me-2">Поиск</a>
+                <a href="/" class="btn btn-outline-light">Главная</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h1 class="mb-4">Поиск фильмов</h1>
+
+        <!-- Форма фильтров -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Фильтры</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <!-- Поле поиска -->
+                    <div class="col-md-6">
+                        <label class="form-label">Поиск по названию</label>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Начните вводить название...">
+                    </div>
+
+                    <!-- Слайдер года -->
+                    <div class="col-md-6">
+                        <label class="form-label">Год выпуска: <span id="yearRange">1950–2050</span></label>
+                        <div class="d-flex align-items-center">
+                            <input type="range" id="yearFrom" class="form-range me-3" min="1950" max="2050" value="1950">
+                            <input type="range" id="yearTo" class="form-range" min="1950" max="2050" value="2050">
+                        </div>
+                    </div>
+
+                    <!-- Жанры -->
+                    <div class="col-12">
+                        <label class="form-label d-block">Жанры</label>
+                        <div id="genresContainer" class="d-flex flex-wrap gap-2">
+                            {{ range .Genres }}
+                            <div class="form-check">
+                                <input class="form-check-input genre-checkbox" type="checkbox" value="{{ . }}" id="genre-{{ . }}">
+                                <label class="form-check-label" for="genre-{{ . }}">{{ . }}</label>
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+
+                    <!-- Комментарии -->
+                    <div class="col-12">
+                        <label class="form-label">Комментарий</label>
+                        <div class="btn-group" role="group">
+                            <input type="radio" class="btn-check" name="hasComment" id="comment-all" value="" checked>
+                            <label class="btn btn-outline-secondary" for="comment-all">Все</label>
+
+                            <input type="radio" class="btn-check" name="hasComment" id="comment-yes" value="true">
+                            <label class="btn btn-outline-secondary" for="comment-yes">С комментарием</label>
+
+                            <input type="radio" class="btn-check" name="hasComment" id="comment-no" value="false">
+                            <label class="btn btn-outline-secondary" for="comment-no">Без комментария</label>
+                        </div>
+                    </div>
+
+                    <!-- Кнопка применить -->
+                    <div class="col-12">
+                        <button id="applyFilters" class="btn btn-primary">Применить фильтры</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Результаты -->
+        <h2 class="mb-3">Результаты</h2>
+        <div id="resultsContainer" class="row">
+            <!-- Сюда подгружаются фильмы -->
+        </div>
+
+        <!-- Кнопка "Загрузить ещё" -->
+        <div class="text-center mt-4" id="loadMoreContainer" style="display:none;">
+            <button id="loadMoreBtn" class="btn btn-outline-primary">Загрузить ещё</button>
+        </div>
+    </div>
+
+    <script>
+    let offset = 0;
+    let currentQuery = '';
+    let hasMore = true;
+    let isLoading = false;
+
+    function debounce(func, delay) {
+        let timer;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    function getSelectedGenres() {
+        return Array.from(document.querySelectorAll('.genre-checkbox:checked'))
+            .map(el => el.value)
+            .join(',');
+    }
+
+    function getCommentFilter() {
+        const selected = document.querySelector('input[name="hasComment"]:checked');
+        return selected ? selected.value : '';
+    }
+
+    async function loadMovies(query = '', reset = false) {
+        if (isLoading || (!hasMore && !reset)) return;
+        
+        isLoading = true;
+        if (reset) {
+            offset = 0;
+            document.getElementById('resultsContainer').innerHTML = '<div class="col-12"><div class="text-center text-muted">Загрузка...</div></div>';
+        }
+
+        const yearFrom = document.getElementById('yearFrom').value;
+        const yearTo = document.getElementById('yearTo').value;
+        const genres = getSelectedGenres();
+        const hasComment = getCommentFilter();
+
+        try {
+            const params = new URLSearchParams({
+                query,
+                yearFrom,
+                yearTo,
+                offset,
+                limit: 20
+            });
+            if (genres) params.set('genres', genres);
+            if (hasComment) params.set('hasComment', hasComment);
+
+            const res = await fetch(`/api/search?${params}`);
+            const data = await res.json();
+
+            if (reset) {
+                document.getElementById('resultsContainer').innerHTML = '';
+            }
+
+            if (data.results.length === 0 && reset) {
+                document.getElementById('resultsContainer').innerHTML = '<div class="col-12"><div class="alert alert-info">Фильмы не найдены</div></div>';
+            }
+
+            data.results.forEach(movie => {
+                // Используем snake_case как в ответе сервера
+                const card = `
+                    <div class="col-md-4 mb-4">
+                        <a href="/movie/${movie.id}" class="movie-link">
+                            <div class="card h-100 shadow-sm">
+                                <div class="position-relative">
+                                    <img src="${movie.picture_url}" class="card-img-top" alt="${movie.name}">
+                                    ${movie.has_comment ? '<span class="comment-indicator" title="Has comment"><i class="bi bi-chat-fill"></i></span>' : ''}
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title mb-2">${movie.name}</h5>
+                                    ${movie.genres && movie.genres.length > 0 ? `
+                                    <p class="card-text small text-muted">
+                                        ${movie.genres.join(', ')}
+                                    </p>
+                                    ` : ''}
+                                    ${movie.year ? `
+                                    <p class="card-text small">
+                                        <i class="bi bi-calendar"></i> ${movie.year}
+                                    </p>
+                                    ` : ''}
+                                    ${movie.world_rating > 0 ? `
+                                    <p class="card-text small">
+                                        <i class="bi bi-star-fill text-warning"></i> ${movie.world_rating.toFixed(1)}/10
+                                    </p>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                `;
+                document.getElementById('resultsContainer').insertAdjacentHTML('beforeend', card);
+            });
+
+            hasMore = data.hasMore;
+            document.getElementById('loadMoreContainer').style.display = hasMore ? 'block' : 'none';
+            offset += 20;
+        } catch (e) {
+            console.error('Ошибка загрузки:', e);
+            if (reset) {
+                document.getElementById('resultsContainer').innerHTML = '<div class="col-12"><div class="alert alert-danger">Ошибка загрузки фильмов</div></div>';
+            }
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    // Слушатели
+    document.getElementById('searchInput').addEventListener('input', 
+        debounce(e => {
+            currentQuery = e.target.value;
+            loadMovies(currentQuery, true);
+        }, 300)
+    );
+
+    document.getElementById('applyFilters').addEventListener('click', () => {
+        loadMovies(currentQuery, true);
+    });
+
+    document.getElementById('loadMoreBtn').addEventListener('click', () => {
+        loadMovies(currentQuery, false);
+    });
+
+    // Слайдер года
+const yearFromSlider = document.getElementById('yearFrom');
+const yearToSlider = document.getElementById('yearTo');
+const yearRange = document.getElementById('yearRange');
+
+function updateYearRange() {
+    yearRange.textContent = `${yearFromSlider.value}–${yearToSlider.value}`;
+}
+
+yearFromSlider.addEventListener('input', updateYearRange);
+yearToSlider.addEventListener('input', updateYearRange);
+
+// Загрузка при старте
+document.addEventListener('DOMContentLoaded', () => {
+    // Устанавливаем начальные значения слайдера
+    yearFromSlider.value = '1950';
+    yearToSlider.value = '2050';
+    updateYearRange();
+    
+    loadMovies('', true);
+});
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
