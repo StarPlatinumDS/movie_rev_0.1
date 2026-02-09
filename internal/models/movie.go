@@ -41,5 +41,6 @@ type MovieResponse struct {
 	Description string   `json:"description"`
 	Rating      int      `json:"rating"`
 	WorldRating float32  `json:"world_rating"`
+	Comment     string   `json:"comment"`
 	HasComment  bool     `json:"has_comment"`
 }

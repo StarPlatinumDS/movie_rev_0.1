@@ -28,7 +28,8 @@ func NewMovieService(repo *database.MovieRepository, minio *storage.MinioStorage
 	}
 }
 
-func (s *MovieService) CreateMovie(ctx context.Context, name string, file io.Reader, fileName string) (*models.MovieResponse, error) {
+func (s *MovieService) CreateMovie(ctx context.Context, name string, file io.Reader, fileName string,
+	genres []string, year int, description string, rating int, worldRating float32, comment string) (*models.MovieResponse, error) {
 	// generate unique filename
 	uniqueName := fmt.Sprintf("%s_%s", uuid.New().String(), fileName)
 
@@ -40,8 +41,14 @@ func (s *MovieService) CreateMovie(ctx context.Context, name string, file io.Rea
 
 	// save to pg db
 	movie := &models.Movie{
-		Name:       name,
-		PictureKey: uniqueName,
+		Name:        name,
+		PictureKey:  uniqueName,
+		Genres:      genres,
+		Year:        year,
+		Description: description,
+		Rating:      rating,
+		WorldRating: worldRating,
+		Comment:     comment,
 	}
 
 	err = s.repo.Create(ctx, movie)
@@ -55,9 +62,16 @@ func (s *MovieService) CreateMovie(ctx context.Context, name string, file io.Rea
 	pictureURL := fmt.Sprintf("%s/%s", s.publicURL, uniqueName)
 
 	return &models.MovieResponse{
-		ID:         movie.ID,
-		Name:       movie.Name,
-		PictureURL: pictureURL,
+		ID:          movie.ID,
+		Name:        movie.Name,
+		PictureURL:  pictureURL,
+		Genres:      movie.Genres,
+		Year:        movie.Year,
+		Description: movie.Description,
+		Rating:      movie.Rating,
+		WorldRating: movie.WorldRating,
+		Comment:     movie.Comment,
+		HasComment:  comment != "",
 	}, nil
 }
 
@@ -72,9 +86,16 @@ func (s *MovieService) GetAllMovies(ctx context.Context) ([]models.MovieResponse
 	for _, movie := range movies {
 		pictureURL := fmt.Sprintf("%s/%s", s.publicURL, movie.PictureKey)
 		responses = append(responses, models.MovieResponse{
-			ID:         movie.ID,
-			Name:       movie.Name,
-			PictureURL: pictureURL,
+			ID:          movie.ID,
+			Name:        movie.Name,
+			PictureURL:  pictureURL,
+			Genres:      movie.Genres,
+			Year:        movie.Year,
+			Description: movie.Description,
+			Rating:      movie.Rating,
+			WorldRating: movie.WorldRating,
+			Comment:     movie.Comment,
+			HasComment:  movie.Comment != "",
 		})
 	}
 
@@ -91,15 +112,23 @@ func (s *MovieService) GetMovieByID(ctx context.Context, id int) (*models.MovieR
 	pictureURL := fmt.Sprintf("%s/%s", s.publicURL, movie.PictureKey)
 
 	return &models.MovieResponse{
-		ID:         movie.ID,
-		Name:       movie.Name,
-		PictureURL: pictureURL,
+		ID:          movie.ID,
+		Name:        movie.Name,
+		PictureURL:  pictureURL,
+		Genres:      movie.Genres,
+		Year:        movie.Year,
+		Description: movie.Description,
+		Rating:      movie.Rating,
+		WorldRating: movie.WorldRating,
+		Comment:     movie.Comment,
+		HasComment:  movie.Comment != "",
 	}, nil
 }
 
 // UpdateMovie returns an update version of stored movie,
 // updates everything except createdAt
-func (s *MovieService) UpdateMovie(ctx context.Context, id int, name string, file io.Reader, fileName string) (*models.MovieResponse, error) {
+func (s *MovieService) UpdateMovie(ctx context.Context, id int, name string, file io.Reader, fileName string,
+	genres []string, year int, description string, rating int, worldRating float32, comment string) (*models.MovieResponse, error) {
 	oldMovie, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -121,8 +150,20 @@ func (s *MovieService) UpdateMovie(ctx context.Context, id int, name string, fil
 		pictureKey = uniiqueName
 	}
 
+	updatedMovie := &models.Movie{
+		ID:          id,
+		Name:        name,
+		PictureKey:  pictureKey,
+		Genres:      genres,
+		Year:        year,
+		Description: description,
+		Rating:      rating,
+		WorldRating: worldRating,
+		Comment:     comment,
+	}
+
 	// update in pg db
-	err = s.repo.Update(ctx, id, name, pictureKey)
+	err = s.repo.Update(ctx, updatedMovie)
 	if err != nil {
 		return nil, err
 	}
@@ -130,9 +171,16 @@ func (s *MovieService) UpdateMovie(ctx context.Context, id int, name string, fil
 	pictureURL := fmt.Sprintf("%s/%s", s.publicURL, pictureKey)
 
 	return &models.MovieResponse{
-		ID:         id,
-		Name:       name,
-		PictureURL: pictureURL,
+		ID:          id,
+		Name:        name,
+		PictureURL:  pictureURL,
+		Genres:      genres,
+		Year:        year,
+		Description: description,
+		Rating:      rating,
+		WorldRating: worldRating,
+		Comment:     comment,
+		HasComment:  comment != "",
 	}, nil
 }
 
