@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"movie-review/internal/models"
@@ -20,9 +21,13 @@ func NewMovieRepository(pool *pgxpool.Pool) *MovieRepository {
 
 // Create saves uploaded movie to our db
 func (r *MovieRepository) Create(ctx context.Context, movie *models.Movie) error {
-	query := `INSERT INTO movies (name, picture_key) VALUES ($1, $2) RETURNING id, created_at`
-	// ????
-	err := r.pool.QueryRow(ctx, query, movie.Name, movie.PictureKey).Scan(&movie.ID, &movie.CreatedAt)
+	query := `INSERT INTO movies (name, picture_key, genres, year, description, rating, world_rating, comment) 
+	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+	          RETURNING id, created_at`
+	err := r.pool.QueryRow(ctx, query,
+		movie.Name, movie.PictureKey, movie.Genres, movie.Year,
+		movie.Description, movie.Rating, movie.WorldRating, movie.Comment,
+	).Scan(&movie.ID, &movie.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to insert movie: %s", err)
 	}
@@ -31,7 +36,8 @@ func (r *MovieRepository) Create(ctx context.Context, movie *models.Movie) error
 
 // GetAll returns a slice of all uploaded movies
 func (r *MovieRepository) GetAll(ctx context.Context) ([]models.Movie, error) {
-	query := `SELECT id, name, picture_key, created_at FROM movies ORDER BY created_at DESC`
+	query := `SELECT id, name, picture_key, genres, year, description, rating, world_rating, comment, created_at 
+	          FROM movies ORDER BY created_at DESC`
 	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load movies: %s", err)
@@ -41,9 +47,14 @@ func (r *MovieRepository) GetAll(ctx context.Context) ([]models.Movie, error) {
 	var movies []models.Movie
 	for rows.Next() {
 		var movie models.Movie
-		err := rows.Scan(&movie.ID, &movie.Name, &movie.PictureKey, &movie.CreatedAt)
+		var worldRating sql.NullFloat64
+		err := rows.Scan(&movie.ID, &movie.Name, &movie.PictureKey, &movie.Genres, // нужно чтобы с genres не было беды
+			&movie.Year, &movie.Description, &movie.Rating, &worldRating, &movie.Comment, &movie.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load movie: %s", err)
+		}
+		if worldRating.Valid {
+			movie.WorldRating = float32(worldRating.Float64)
 		}
 		movies = append(movies, movie)
 	}
@@ -57,22 +68,31 @@ func (r *MovieRepository) GetAll(ctx context.Context) ([]models.Movie, error) {
 
 // GetByID returns an uploaded movie with matching ID or an error
 func (r *MovieRepository) GetByID(ctx context.Context, id int) (*models.Movie, error) {
-	query := `SELECT id, name, picture_key, created_at FROM movies WHERE id = $1`
+	query := `SELECT id, name, picture_key, genres, year, description, rating, world_rating, comment, created_at 
+	          FROM movies WHERE id = $1`
 	var movie models.Movie
-	err := r.pool.QueryRow(ctx, query, id).Scan(&movie.ID, &movie.Name, &movie.PictureKey, &movie.CreatedAt)
+	var worldRating sql.NullFloat64
+	err := r.pool.QueryRow(ctx, query, id).Scan(&movie.ID, &movie.Name, &movie.PictureKey, &movie.Genres,
+		&movie.Year, &movie.Description, &movie.Rating, &worldRating, &movie.Comment, &movie.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("movie not found")
 		}
 		return nil, fmt.Errorf("failed to load a movie: %s", err)
 	}
+	if worldRating.Valid {
+		movie.WorldRating = float32(worldRating.Float64)
+	}
 
 	return &movie, nil
 }
 
-func (r *MovieRepository) Update(ctx context.Context, id int, name, pictureKey string) error {
-	query := `UPDATE movie SET name = $1, picture_key = $2 WHERE id = $3`
-	result, err := r.pool.Exec(ctx, query, name, pictureKey, id)
+func (r *MovieRepository) Update(ctx context.Context, movie *models.Movie) error {
+	query := `UPDATE movies SET name = $1, picture_key = $2, genres = $3, year = $4, 
+	          description = $5, rating = $6, world_rating = $7, comment = $8 
+	          WHERE id = $9`
+	result, err := r.pool.Exec(ctx, query, movie.Name, movie.PictureKey, movie.Genres, movie.Year,
+		movie.Description, movie.Rating, movie.WorldRating, movie.Comment, movie.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update movie: %s", err)
 	}
