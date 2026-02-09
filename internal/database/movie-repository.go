@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"movie-review/internal/models"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -85,6 +86,101 @@ func (r *MovieRepository) GetByID(ctx context.Context, id int) (*models.Movie, e
 	}
 
 	return &movie, nil
+}
+
+// SearchMovies - search on /search page with conditions and pagination
+func (r *MovieRepository) SearchMovies(ctx context.Context, query string, yearFrom int, yearTo int, genres []string, hasComment *bool, offset, limit int) ([]models.Movie, error) {
+	querySQL := `SELECT id, name, picture_key, genres, year, description, rating, world_rating, comment, created_at FROM movies`
+
+	var whereClauses []string
+	var args []interface{}
+	argCount := 1
+
+	// name filter
+	if query != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("name LIKE $%d", argCount))
+		args = append(args, "%"+query+"%")
+		argCount++
+	}
+
+	// year FROM filter
+	if yearFrom > 0 {
+		whereClauses = append(whereClauses, fmt.Sprintf("year >= $%d", argCount))
+		args = append(args, yearFrom)
+		argCount++
+	}
+
+	// year TO filter
+	if yearTo > 0 {
+		whereClauses = append(whereClauses, fmt.Sprintf("year <= $%d", argCount))
+		args = append(args, yearTo)
+		argCount++
+	}
+
+	// genres filter
+	if len(genres) > 0 {
+		// there may be an array overlap therefore I use &&
+		placeholders := make([]string, len(genres))
+		for i, genre := range genres {
+			placeholders[i] = fmt.Sprintf("$%d", argCount+i)
+			args = append(args, genre)
+		}
+		whereClauses = append(whereClauses, fmt.Sprintf("genres && ARRAY[%s]", strings.Join(placeholders, ",")))
+		argCount += len(genres)
+	}
+
+	// hasComment filter
+	if hasComment != nil {
+		if *hasComment {
+			whereClauses = append(whereClauses, fmt.Sprintf("comment IS NOT NULL AND comment != ''"))
+		} else {
+			whereClauses = append(whereClauses, fmt.Sprintf("comment IS NULL OR comment = ''"))
+		}
+	}
+
+	// that's query's WHERE part
+	if len(whereClauses) > 0 {
+		querySQL += " WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	// Sorting: if query exists we search by relevance, otherwise - by date
+	if query != "" {
+		querySQL += " ORDER BY CASE WHEN name LIKE $1 THEN 0 ELSE 1 END, created_at DESC"
+	} else {
+		querySQL += " ORDER BY created_at DESC"
+	}
+
+	// pagination
+	querySQL += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argCount, argCount+1)
+	args = append(args, limit, offset)
+
+	// make a request
+	rows, err := r.pool.Query(ctx, querySQL, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search movies: %s", err)
+	}
+	defer rows.Close()
+
+	var movies []models.Movie
+	for rows.Next() {
+		var movie models.Movie
+		var worldRating sql.NullFloat64
+		err := rows.Scan(&movie.ID, &movie.Name, &movie.PictureKey, &movie.Genres,
+			&movie.Year, &movie.Description, &movie.Rating, &worldRating, &movie.Comment, &movie.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan movie: %s", err)
+		}
+		if worldRating.Valid {
+			movie.WorldRating = float32(worldRating.Float64)
+		}
+		movies = append(movies, movie)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %s", err)
+	}
+
+	return movies, nil
 }
 
 func (r *MovieRepository) Update(ctx context.Context, movie *models.Movie) error {
