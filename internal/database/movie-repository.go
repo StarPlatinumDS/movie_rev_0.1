@@ -31,7 +31,7 @@ func (r *MovieRepository) Create(ctx context.Context, movie *models.Movie) error
 
 // GetAll returns a slice of all uploaded movies
 func (r *MovieRepository) GetAll(ctx context.Context) ([]models.Movie, error) {
-	query := `SELECT id, name, piture_key, created_at FROM movies ORDER BY created_at DESC`
+	query := `SELECT id, name, picture_key, created_at FROM movies ORDER BY created_at DESC`
 	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load movies: %s", err)

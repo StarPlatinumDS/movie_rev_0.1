@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"html/template"
+	"log"
 	"movie-review/internal/services"
 	"net/http"
-
-	"github.com/google/uuid"
+	"os"
+	"strconv"
 )
 
 type MovieHandlers struct {
@@ -20,12 +21,30 @@ func NewMovieHandlers(service *services.MovieService) *MovieHandlers {
 func (h *MovieHandlers) GetMoviesPage(w http.ResponseWriter, r *http.Request) {
 	movies, err := h.service.GetAllMovies(r.Context())
 	if err != nil {
+		log.Printf("Error loading movies: %v", err)
 		http.Error(w, "Failed to load movies", http.StatusInternalServerError)
 		return
 	}
 
-	tmpl := template.Must(template.ParseFiles("web/templates/index.gohtml"))
-	tmpl.Execute(w, movies)
+	log.Println("Movies loaded:", len(movies))
+
+	// Проверяем текущую директорию
+	wd, _ := os.Getwd()
+	log.Println("Current working directory:", wd)
+
+	tmpl, err := template.ParseFiles("web/templates/index.gohtml")
+	if err != nil {
+		log.Printf("Template parse error: %v", err)
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.Execute(w, movies)
+	if err != nil {
+		log.Printf("Template execute error: %v", err)
+		http.Error(w, "Template execute error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // CreateMovie does everything to upload moovie using data from the form
@@ -62,13 +81,14 @@ func (h *MovieHandlers) CreateMovie(w http.ResponseWriter, r *http.Request) {
 // DeleteMovie - deletes movie and redirects
 func (h *MovieHandlers) DeleteMovie(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
-	id, err := uuid.Parse(idStr)
+
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		http.Error(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
 
-	err = h.service.DeleteMovie(r.Context(), int(id.ID()))
+	err = h.service.DeleteMovie(r.Context(), id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
