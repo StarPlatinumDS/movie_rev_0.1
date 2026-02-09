@@ -10,6 +10,28 @@ import (
 	"strconv"
 )
 
+// helper functions for templates
+var funcMap = template.FuncMap{
+	"iterate": func(count int) []int {
+		var items []int
+		for i := 0; i < count; i++ {
+			items = append(items, i)
+		}
+		return items
+	},
+	"inSlice": func(item string, list []string) bool {
+		for _, v := range list {
+			if v == item {
+				return true
+			}
+		}
+		return false
+	},
+	"sub": func(a, b int) int {
+		return a - b
+	},
+}
+
 type MovieHandlers struct {
 	service *services.MovieService
 }
@@ -27,22 +49,23 @@ func (h *MovieHandlers) GetMoviesPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Movies loaded:", len(movies))
-
-	tmpl, err := template.ParseFiles("web/templates/index.gohtml")
+	tmpl := template.New("index.gohtml").Funcs(funcMap)
+	tmpl, err = tmpl.ParseFiles("web/templates/index.gohtml")
 	if err != nil {
 		log.Printf("Template parse error: %v", err)
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		return
 	}
 
-	err = tmpl.Execute(w, struct {
+	data := struct {
 		Movies []models.MovieResponse
 		Genres []string
 	}{
 		Movies: movies,
 		Genres: models.AvailableGenres,
-	})
+	}
+
+	err = tmpl.Execute(w, data)
 	if err != nil {
 		log.Printf("Template execute error: %v", err)
 		http.Error(w, "Template execute error", http.StatusInternalServerError)
@@ -105,20 +128,23 @@ func (h *MovieHandlers) GetMovieDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, err := template.ParseFiles("web/templates/movie_detail.gohtml")
+	tmpl := template.New("movie_detail.gohtml").Funcs(funcMap)
+	tmpl, err = tmpl.ParseFiles("web/templates/movie_detail.gohtml")
 	if err != nil {
 		log.Printf("Template parse error: %v", err)
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		return
 	}
 
-	err = tmpl.Execute(w, struct {
+	data := struct {
 		Movie  *models.MovieResponse
 		Genres []string
 	}{
 		Movie:  movie,
 		Genres: models.AvailableGenres,
-	})
+	}
+
+	err = tmpl.Execute(w, data)
 	if err != nil {
 		log.Printf("Template execute error: %v", err)
 		http.Error(w, "Template execute error", http.StatusInternalServerError)
@@ -141,20 +167,23 @@ func (h *MovieHandlers) GetMovieEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, err := template.ParseFiles("web/templates/movie_edit.gohtml")
+	tmpl := template.New("movie_edit.gohtml").Funcs(funcMap)
+	tmpl, err = tmpl.ParseFiles("web/templates/movie_edit.gohtml")
 	if err != nil {
 		log.Printf("Tempate parse error: %v", err)
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		return
 	}
 
-	err = tmpl.Execute(w, struct {
+	data := struct {
 		Movie  *models.MovieResponse
 		Genres []string
 	}{
 		Movie:  movie,
 		Genres: models.AvailableGenres,
-	})
+	}
+
+	err = tmpl.Execute(w, data)
 	if err != nil {
 		log.Printf("Teamplate execute error: %v", err)
 		http.Error(w, "Template execute error", http.StatusInternalServerError)

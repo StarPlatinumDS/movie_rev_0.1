@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Movie.Name}} - Movie Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .movie-container {
+            display: flex;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .poster-section {
+            flex: 0 0 250px;
+        }
+        .poster-img {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .info-section {
+            flex: 1;
+        }
+        .rating-stars {
+            color: #ffc107;
+            font-size: 1.5rem;
+            margin: 0.5rem 0;
+        }
+        .world-rating {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+        .genre-badge {
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .comment-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .nav-sidebar {
+            width: 250px;
+            position: sticky;
+            top: 20px;
+            align-self: flex-start;
+        }
+        .nav-link i {
+            margin-right: 0.5rem;
+            width: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light mt-3 rounded">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/">
+                    <i class="bi bi-film"></i> Movies
+                </a>
+                <div>
+                    <a href="/" class="btn btn-outline-secondary btn-sm me-2">
+                        <i class="bi bi-arrow-left"></i> Back to List
+                    </a>
+                    <a href="/movie/{{.Movie.ID}}/edit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="movie-container">
+            <!-- Постер слева -->
+            <div class="poster-section">
+                <img src="{{.Movie.PictureURL}}" class="poster-img" alt="{{.Movie.Name}}">
+            </div>
+
+            <!-- Основная информация -->
+            <div class="info-section">
+                <h1>{{.Movie.Name}}</h1>
+                
+                {{if .Movie.Year}}
+                <p class="text-muted h4">{{.Movie.Year}}</p>
+                {{end}}
+
+                <!-- Жанры -->
+                {{if gt (len .Movie.Genres) 0}}
+                <div class="mb-3">
+                    {{range .Movie.Genres}}
+                    <span class="badge bg-secondary genre-badge">{{.}}</span>
+                    {{end}}
+                </div>
+                {{end}}
+
+                <!-- Оценки -->
+                <div class="mb-4">
+                    {{if .Movie.Rating}}
+                    <div>
+                        <span class="fw-bold">Your Rating:</span>
+                        <div class="rating-stars">
+                            {{range $i := iterate 5}}
+                                {{if lt $i $.Movie.Rating}}
+                                    <i class="bi bi-star-fill"></i>
+                                {{else}}
+                                    <i class="bi bi-star"></i>
+                                {{end}}
+                            {{end}}
+                            <span class="ms-2 text-muted">({{.Movie.Rating}}/5)</span>
+                        </div>
+                    </div>
+                    {{end}}
+
+                    {{if .Movie.WorldRating}}
+                    <div>
+                        <span class="fw-bold">World Rating:</span>
+                        <div class="world-rating">{{printf "%.1f" .Movie.WorldRating}}/10</div>
+                    </div>
+                    {{end}}
+                </div>
+
+                <!-- Описание -->
+                {{if .Movie.Description}}
+                <div class="mb-4">
+                    <h4>Description</h4>
+                    <p>{{.Movie.Description}}</p>
+                </div>
+                {{end}}
+
+                <!-- Комментарий -->
+                {{if .Movie.Comment}}
+                <div class="comment-box">
+                    <h5 class="mb-2">
+                        <i class="bi bi-chat-fill text-warning"></i> Personal Comment
+                    </h5>
+                    <p class="mb-0">{{.Movie.Comment}}</p>
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Навигация справа (можно добавить позже) -->
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Helper function for template
+        function iterate(n) {
+            return Array.from({length: n}, (_, i) => i);
+        }
+    </script>
+</body>
+</html>
