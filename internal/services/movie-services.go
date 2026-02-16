@@ -4,22 +4,20 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"movie-review/internal/database"
 	"movie-review/internal/models"
-
-	"movie-review/internal/storage"
+	"movie-review/internal/repository"
 
 	"github.com/google/uuid"
 )
 
 type MovieService struct {
-	repo      *database.MovieRepository
-	minio     *storage.MinioStorage
+	repo      repository.MovieRepository
+	minio     repository.FileStorage
 	bucket    string
 	publicURL string // для формирования ссылок: "http://localhost:9000/my-bucket"
 }
 
-func NewMovieService(repo *database.MovieRepository, minio *storage.MinioStorage, bucket string, publicURL string) *MovieService {
+func NewMovieService(repo repository.MovieRepository, minio repository.FileStorage, bucket string, publicURL string) *MovieService {
 	return &MovieService{
 		repo:      repo,
 		minio:     minio,
