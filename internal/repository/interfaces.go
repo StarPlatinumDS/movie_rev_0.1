@@ -6,7 +6,7 @@ import (
 	"movie-review/internal/models"
 )
 
-// interface for MovieRepository repo
+// interface for movieRepository repo
 type MovieRepository interface {
 	Create(ctx context.Context, movie *models.Movie) error
 	GetAll(ctx context.Context) ([]models.Movie, error)
@@ -21,4 +21,17 @@ type MovieRepository interface {
 type FileStorage interface {
 	UploadFile(ctx context.Context, bucket string, objectName string, file io.Reader) error
 	DeleteFile(ctx context.Context, bucket, objectName string) error
+}
+
+// MovieService is an interface for movieService
+type MovieService interface {
+	CreateMovie(ctx context.Context, name string, file io.Reader, fileName string,
+		genres []string, year int, description string, rating int, worldRating float32, comment string) (*models.MovieResponse, error)
+	GetAllMovies(ctx context.Context) ([]models.MovieResponse, error)
+	GetMovieByID(ctx context.Context, id int) (*models.MovieResponse, error)
+	SearchMovies(ctx context.Context, query string, yearFrom, yearTo int, genres []string, hasComment *bool, offset, limit int) ([]models.MovieResponse, error)
+	GetAllGenres(ctx context.Context) ([]string, error)
+	UpdateMovie(ctx context.Context, id int, name string, file io.Reader, fileName string,
+		genres []string, year int, description string, rating int, worldRating float32, comment string) (*models.MovieResponse, error)
+	DeleteMovie(ctx context.Context, id int) error
 }

@@ -10,15 +10,15 @@ import (
 	"github.com/google/uuid"
 )
 
-type MovieService struct {
+type movieService struct {
 	repo      repository.MovieRepository
 	minio     repository.FileStorage
 	bucket    string
 	publicURL string // для формирования ссылок: "http://localhost:9000/my-bucket"
 }
 
-func NewMovieService(repo repository.MovieRepository, minio repository.FileStorage, bucket string, publicURL string) *MovieService {
-	return &MovieService{
+func NewMovieService(repo repository.MovieRepository, minio repository.FileStorage, bucket string, publicURL string) repository.MovieService {
+	return &movieService{
 		repo:      repo,
 		minio:     minio,
 		bucket:    bucket,
@@ -26,7 +26,7 @@ func NewMovieService(repo repository.MovieRepository, minio repository.FileStora
 	}
 }
 
-func (s *MovieService) CreateMovie(ctx context.Context, name string, file io.Reader, fileName string,
+func (s *movieService) CreateMovie(ctx context.Context, name string, file io.Reader, fileName string,
 	genres []string, year int, description string, rating int, worldRating float32, comment string) (*models.MovieResponse, error) {
 	// generate unique filename
 	uniqueName := fmt.Sprintf("%s_%s", uuid.New().String(), fileName)
@@ -74,7 +74,7 @@ func (s *MovieService) CreateMovie(ctx context.Context, name string, file io.Rea
 }
 
 // GetAllMovies returns to the user all movies with picture links
-func (s *MovieService) GetAllMovies(ctx context.Context) ([]models.MovieResponse, error) {
+func (s *movieService) GetAllMovies(ctx context.Context) ([]models.MovieResponse, error) {
 	movies, err := s.repo.GetAll(ctx)
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func (s *MovieService) GetAllMovies(ctx context.Context) ([]models.MovieResponse
 }
 
 // GetMovieByID returns a movie by id and a full picture URL
-func (s *MovieService) GetMovieByID(ctx context.Context, id int) (*models.MovieResponse, error) {
+func (s *movieService) GetMovieByID(ctx context.Context, id int) (*models.MovieResponse, error) {
 	movie, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func (s *MovieService) GetMovieByID(ctx context.Context, id int) (*models.MovieR
 }
 
 // SearchMovies returns searched movies with/without filtration
-func (s *MovieService) SearchMovies(ctx context.Context, query string, yearFrom, yearTo int, genres []string, hasComment *bool, offset, limit int) ([]models.MovieResponse, error) {
+func (s *movieService) SearchMovies(ctx context.Context, query string, yearFrom, yearTo int, genres []string, hasComment *bool, offset, limit int) ([]models.MovieResponse, error) {
 	movies, err := s.repo.SearchMovies(ctx, query, yearFrom, yearTo, genres, hasComment, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search movies: %s", err)
@@ -139,7 +139,7 @@ func (s *MovieService) SearchMovies(ctx context.Context, query string, yearFrom,
 }
 
 // Returns all genres for the search
-func (s *MovieService) GetAllGenres(ctx context.Context) ([]string, error) {
+func (s *movieService) GetAllGenres(ctx context.Context) ([]string, error) {
 	genres, err := s.repo.GetAllGenres(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get genres: %s", err)
@@ -149,7 +149,7 @@ func (s *MovieService) GetAllGenres(ctx context.Context) ([]string, error) {
 
 // UpdateMovie returns an update version of stored movie,
 // updates everything except createdAt
-func (s *MovieService) UpdateMovie(ctx context.Context, id int, name string, file io.Reader, fileName string,
+func (s *movieService) UpdateMovie(ctx context.Context, id int, name string, file io.Reader, fileName string,
 	genres []string, year int, description string, rating int, worldRating float32, comment string) (*models.MovieResponse, error) {
 	oldMovie, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -208,7 +208,7 @@ func (s *MovieService) UpdateMovie(ctx context.Context, id int, name string, fil
 
 // DeleteMovie deletes from db & storage, returns err if something
 // went wrong
-func (s *MovieService) DeleteMovie(ctx context.Context, id int) error {
+func (s *movieService) DeleteMovie(ctx context.Context, id int) error {
 	movie, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return err
@@ -225,7 +225,7 @@ func (s *MovieService) DeleteMovie(ctx context.Context, id int) error {
 }
 
 // movieToResponse is a helper func to send movie to the client
-func (s *MovieService) movieToResponse(movie models.Movie) models.MovieResponse {
+func (s *movieService) movieToResponse(movie models.Movie) models.MovieResponse {
 	pictureURL := fmt.Sprintf("%s/%s", s.publicURL, movie.PictureKey)
 	return models.MovieResponse{
 		ID:          movie.ID,

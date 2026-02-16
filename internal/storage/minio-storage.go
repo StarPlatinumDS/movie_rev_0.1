@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"io"
+	"movie-review/internal/repository"
 
 	"github.com/minio/minio-go/v7"
 )
@@ -11,7 +12,7 @@ type MinioStorage struct {
 	client *minio.Client
 }
 
-func NewMinioStorage(client *minio.Client) *MinioStorage {
+func NewMinioStorage(client *minio.Client) repository.FileStorage {
 	return &MinioStorage{client: client}
 }
 

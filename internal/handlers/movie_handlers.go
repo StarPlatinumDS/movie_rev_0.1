@@ -5,7 +5,7 @@ import (
 	"log"
 	"mime/multipart"
 	"movie-review/internal/models"
-	"movie-review/internal/services"
+	"movie-review/internal/repository"
 	"net/http"
 	"strconv"
 )
@@ -33,10 +33,10 @@ var funcMap = template.FuncMap{
 }
 
 type MovieHandlers struct {
-	service *services.MovieService
+	service repository.MovieService
 }
 
-func NewMovieHandlers(service *services.MovieService) *MovieHandlers {
+func NewMovieHandlers(service repository.MovieService) *MovieHandlers {
 	return &MovieHandlers{service: service}
 }
 

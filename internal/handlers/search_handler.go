@@ -5,17 +5,17 @@ import (
 	"html/template"
 	"log"
 	"movie-review/internal/models"
-	"movie-review/internal/services"
+	"movie-review/internal/repository"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
 type SearchHandler struct {
-	service *services.MovieService
+	service repository.MovieService
 }
 
-func NewSearchHandler(service *services.MovieService) *SearchHandler {
+func NewSearchHandler(service repository.MovieService) *SearchHandler {
 	return &SearchHandler{
 		service: service,
 	}

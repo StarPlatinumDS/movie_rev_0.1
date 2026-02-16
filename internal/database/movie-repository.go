@@ -6,22 +6,23 @@ import (
 	"errors"
 	"fmt"
 	"movie-review/internal/models"
+	"movie-review/internal/repository"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type MovieRepository struct {
+type movieRepository struct {
 	pool *pgxpool.Pool
 }
 
-func NewMovieRepository(pool *pgxpool.Pool) *MovieRepository {
-	return &MovieRepository{pool: pool}
+func NewMovieRepository(pool *pgxpool.Pool) repository.MovieRepository {
+	return &movieRepository{pool: pool}
 }
 
 // Create saves uploaded movie to our db
-func (r *MovieRepository) Create(ctx context.Context, movie *models.Movie) error {
+func (r *movieRepository) Create(ctx context.Context, movie *models.Movie) error {
 	query := `INSERT INTO movies (name, picture_key, genres, year, description, rating, world_rating, comment) 
 	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
 	          RETURNING id, created_at`
@@ -36,7 +37,7 @@ func (r *MovieRepository) Create(ctx context.Context, movie *models.Movie) error
 }
 
 // GetAll returns a slice of all uploaded movies
-func (r *MovieRepository) GetAll(ctx context.Context) ([]models.Movie, error) {
+func (r *movieRepository) GetAll(ctx context.Context) ([]models.Movie, error) {
 	query := `SELECT id, name, picture_key, genres, year, description, rating, world_rating, comment, created_at 
 	          FROM movies ORDER BY created_at DESC`
 	rows, err := r.pool.Query(ctx, query)
@@ -68,7 +69,7 @@ func (r *MovieRepository) GetAll(ctx context.Context) ([]models.Movie, error) {
 }
 
 // GetByID returns an uploaded movie with matching ID or an error
-func (r *MovieRepository) GetByID(ctx context.Context, id int) (*models.Movie, error) {
+func (r *movieRepository) GetByID(ctx context.Context, id int) (*models.Movie, error) {
 	query := `SELECT id, name, picture_key, genres, year, description, rating, world_rating, comment, created_at 
 	          FROM movies WHERE id = $1`
 	var movie models.Movie
@@ -89,7 +90,7 @@ func (r *MovieRepository) GetByID(ctx context.Context, id int) (*models.Movie, e
 }
 
 // SearchMovies - search on /search page with conditions and pagination
-func (r *MovieRepository) SearchMovies(ctx context.Context, query string, yearFrom int, yearTo int, genres []string, hasComment *bool, offset, limit int) ([]models.Movie, error) {
+func (r *movieRepository) SearchMovies(ctx context.Context, query string, yearFrom int, yearTo int, genres []string, hasComment *bool, offset, limit int) ([]models.Movie, error) {
 	querySQL := `SELECT id, name, picture_key, genres, year, description, rating, world_rating, comment, created_at FROM movies`
 
 	var whereClauses []string
@@ -183,7 +184,7 @@ func (r *MovieRepository) SearchMovies(ctx context.Context, query string, yearFr
 	return movies, nil
 }
 
-func (r *MovieRepository) GetAllGenres(ctx context.Context) ([]string, error) {
+func (r *movieRepository) GetAllGenres(ctx context.Context) ([]string, error) {
 	query := `
 		SELECT DISTINCT unnest(genres) AS genre
 		FROM movies
@@ -212,7 +213,7 @@ func (r *MovieRepository) GetAllGenres(ctx context.Context) ([]string, error) {
 	return genres, nil
 }
 
-func (r *MovieRepository) Update(ctx context.Context, movie *models.Movie) error {
+func (r *movieRepository) Update(ctx context.Context, movie *models.Movie) error {
 	query := `UPDATE movies SET name = $1, picture_key = $2, genres = $3, year = $4, 
 	          description = $5, rating = $6, world_rating = $7, comment = $8 
 	          WHERE id = $9`
@@ -229,7 +230,7 @@ func (r *MovieRepository) Update(ctx context.Context, movie *models.Movie) error
 	return nil
 }
 
-func (r *MovieRepository) Delete(ctx context.Context, id int) error {
+func (r *movieRepository) Delete(ctx context.Context, id int) error {
 	query := `DELETE FROM movies WHERE id = $1`
 	result, err := r.pool.Exec(ctx, query, id)
 	if err != nil {
