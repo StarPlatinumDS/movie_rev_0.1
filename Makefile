@@ -1,8 +1,6 @@
-up:
-	docker-compose up
-
+run:
+	docker-compose up -d
+	@go run ./cmd/reviews
+	
 down:
 	docker-compose down
-
-run:
-	@go run ./cmd/reviews

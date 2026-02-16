@@ -10,6 +10,8 @@ import (
 	"movie-review/internal/storage"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -96,6 +98,7 @@ func NewApp() *App {
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	return &App{
@@ -104,20 +107,55 @@ func NewApp() *App {
 	}
 }
 
-func (a *App) Run() {
+func (a *App) Run() error {
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf("Server starting on port %s", port)
-	log.Fatal(a.httpServer.ListenAndServe())
+	// gracefult shutdown part
+	// start server as a goroutine
+	go func() {
+		log.Printf("Server starting on port %s", port)
+		if err := a.httpServer.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalf("Server error: %v", err)
+		}
+	}()
+
+	// wait fro the signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutdown signal received")
+
+	// stop the work
+	return a.Close()
 }
 
-func (a *App) Close() {
+func (a *App) Close() error {
+
+	log.Println("Starting graceful shutdown....")
+
+	// context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// wait for all requests to stop HTTP
+	if err := a.httpServer.Shutdown(ctx); err != nil {
+		log.Printf("HTTP server shutdown error: %v", err)
+	} else {
+		log.Println("✓ HTTP server stopped gracefully")
+	}
+
+	// close conn to db
 	if a.dbPool != nil {
 		a.dbPool.Close()
+		log.Println("✓ Database pool closed")
 	}
+
+	log.Println("✓ Graceful shutdown completed")
+	return nil
 }
 
 // initDatabase создаёт пул соединений с PostgreSQL
