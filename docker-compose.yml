@@ -1,21 +1,40 @@
 version: '3.8'
 
 services:
+  # migrations
+  migrate:
+    image: migrate/migrate:latest
+    volumes:
+      - ./migrations:/migrations:ro  # :ro = read-only, безопасно
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-movies}
+    command: [
+        "-path", "/migrations",
+        "-database", "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-movies}?sslmode=disable",
+        "up"
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app_network
+
   # PostgreSQL
   postgres:
     image: postgres:15-alpine
-    container_name: postgres_db_v2
+    container_name: postgres_db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-movies}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - ./internal/postgres_data:/var/lib/postgresql/data
-      - ./init-scripts//01-init.sql:/docker-entrypoint-initdb.d/01-init.sql
     networks:
       - app_network
     healthcheck:
@@ -27,7 +46,7 @@ services:
   # MinIO
   minio:
     image: minio/minio:latest
-    container_name: minio_storage_v2
+    container_name: minio_storage
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:

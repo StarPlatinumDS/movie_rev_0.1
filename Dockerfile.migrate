@@ -1,0 +1,26 @@
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /app
+
+# Копируем модули для кэширования
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Копируем весь проект (нужен для доступа к папке migrations)
+COPY . .
+
+# Собираем раннер миграций
+RUN CGO_ENABLED=0 GOOS=linux go build -o /migrate ./cmd/migrate
+
+# Минимальный образ для запуска
+FROM alpine:3.19
+
+WORKDIR /root/
+
+# Копируем бинарник
+COPY --from=builder /migrate .
+
+# Копируем папку с миграциями (важно, так как мы используем file:// драйвер)
+COPY --from=builder /app/migrations ./migrations
+
+CMD ["/migrate"]
