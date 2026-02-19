@@ -80,7 +80,7 @@ func (s *movieService) GetAllMovies(ctx context.Context) ([]models.MovieResponse
 		return nil, err
 	}
 
-	var responses []models.MovieResponse
+	responses := make([]models.MovieResponse, 0, len(movies))
 	for _, movie := range movies {
 		pictureURL := fmt.Sprintf("%s/%s", s.publicURL, movie.PictureKey)
 		responses = append(responses, models.MovieResponse{
