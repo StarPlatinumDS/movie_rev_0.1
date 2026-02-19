@@ -9,6 +9,7 @@ import (
 	"movie-review/internal/services"
 	"movie-review/internal/storage"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -81,6 +82,19 @@ func NewApp() *App {
 	mux.HandleFunc("GET /movie/{id}/edit", movieHandlers.GetMovieEdit)
 	mux.HandleFunc("POST /movie/{id}/edit", movieHandlers.UpdateMovie)
 	mux.HandleFunc("GET /movies/delete", movieHandlers.DeleteMovie)
+
+	// pprof
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	// Обработчики для конкретных профилей
+	mux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+	mux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+	mux.Handle("/debug/pprof/block", pprof.Handler("block"))
+	mux.Handle("/debug/pprof/mutex", pprof.Handler("mutex"))
+	mux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
 
 	// search routes
 	searchHandler := handlers.NewSearchHandler(movieService)
